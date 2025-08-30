@@ -1,7 +1,106 @@
+from collections import Counter
+
+class Author:
+    def __init__(self, name):
+        if not isinstance(name, str) or len(name.strip()) == 0:
+            raise Exception("name must be a non-empty string")
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        # Immutable: raise exception
+        raise Exception("name is immutable and cannot be changed")
+
+    def articles(self):
+        return [article for article in Article.all if article.author == self]
+
+    def magazines(self):
+        return list({article.magazine for article in self.articles()})
+
+    def add_article(self, magazine, title):
+        return Article(self, magazine, title)
+
+    def topic_areas(self):
+        if not self.articles():
+            return None
+        return list({mag.category for mag in self.magazines()})
+
+    def __repr__(self):
+        return f"<Author {self.name}>"
+
+
+class Magazine:
+    all = []
+
+    def __init__(self, name, category):
+        self.name = name
+        self.category = category
+        Magazine.all.append(self)
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        if isinstance(value, str) and 2 <= len(value) <= 16:
+            self._name = value
+        else:
+            raise Exception("name must be a string between 2 and 16 characters")
+
+    @property
+    def category(self):
+        return self._category
+
+    @category.setter
+    def category(self, value):
+        if isinstance(value, str) and len(value) > 0:
+            self._category = value
+        else:
+            raise Exception("category must be a non-empty string")
+
+    def articles(self):
+        return [article for article in Article.all if article.magazine == self]
+
+    def contributors(self):
+        return list({article.author for article in self.articles()})
+
+    def article_titles(self):
+        if not self.articles():
+            return None
+        return [article.title for article in self.articles()]
+
+    def contributing_authors(self):
+        authors = [article.author for article in self.articles()]
+        counts = Counter(authors)
+        result = [a for a, c in counts.items() if c > 2]
+        return result or None
+
+    @classmethod
+    def top_publisher(cls):
+        if not Article.all:
+            return None
+        return max(cls.all, key=lambda mag: len(mag.articles()))
+
+    def __repr__(self):
+        return f"<Magazine {self.name} ({self.category})>"
+
+
 class Article:
-    all = []  # single source of truth for all articles
+    all = []
 
     def __init__(self, author, magazine, title):
+        if not isinstance(author, Author):
+            raise Exception("author must be an Author instance")
+        if not isinstance(magazine, Magazine):
+            raise Exception("magazine must be a Magazine instance")
+        if not isinstance(title, str) or not (5 <= len(title) <= 50):
+            raise Exception("title must be a string between 5 and 50 characters")
+
         self._author = author
         self._magazine = magazine
         self._title = title
@@ -9,105 +108,32 @@ class Article:
 
     @property
     def title(self):
-        """Immutable string between 5 and 50 characters (but no strict validation here)."""
         return self._title
+
+    @title.setter
+    def title(self, value):
+        # Immutable: raise exception
+        raise Exception("title is immutable and cannot be changed")
 
     @property
     def author(self):
-        """Author instance (mutable)."""
         return self._author
 
     @author.setter
     def author(self, value):
+        if not isinstance(value, Author):
+            raise Exception("author must be an Author instance")
         self._author = value
 
     @property
     def magazine(self):
-        """Magazine instance (mutable)."""
         return self._magazine
 
     @magazine.setter
     def magazine(self, value):
+        if not isinstance(value, Magazine):
+            raise Exception("magazine must be a Magazine instance")
         self._magazine = value
 
-
-class Author:
-    def __init__(self, name):
-        self._name = name
-
-    @property
-    def name(self):
-        """Immutable string > 0 characters (but no strict validation here)."""
-        return self._name
-
-    def articles(self):
-        """All articles written by this author."""
-        return [article for article in Article.all if article.author == self]
-
-    def magazines(self):
-        """Unique magazines this author has written for."""
-        return list({article.magazine for article in self.articles()})
-
-    def add_article(self, magazine, title):
-        """Create and return a new Article."""
-        return Article(self, magazine, title)
-
-    def topic_areas(self):
-        """Unique categories of magazines the author has written for, or None."""
-        if not self.articles():
-            return None
-        return list({mag.category for mag in self.magazines()})
-
-
-class Magazine:
-    all = []  # keep track of all magazines
-
-    def __init__(self, name, category):
-        self._name = name
-        self._category = category
-        Magazine.all.append(self)
-
-    @property
-    def name(self):
-        """Mutable string between 2 and 16 chars (no strict validation)."""
-        return self._name
-
-    @name.setter
-    def name(self, value):
-        self._name = value
-
-    @property
-    def category(self):
-        """Mutable non-empty string (no strict validation)."""
-        return self._category
-
-    @category.setter
-    def category(self, value):
-        self._category = value
-
-    def articles(self):
-        """All articles in this magazine."""
-        return [article for article in Article.all if article.magazine == self]
-
-    def contributors(self):
-        """Unique authors who wrote for this magazine."""
-        return list({article.author for article in self.articles()})
-
-    def article_titles(self):
-        """List of article titles or None."""
-        if not self.articles():
-            return None
-        return [article.title for article in self.articles()]
-
-    def contributing_authors(self):
-        """Authors who wrote more than 2 articles in this magazine."""
-        authors = [article.author for article in self.articles()]
-        result = [a for a in set(authors) if authors.count(a) > 2]
-        return result if result else None
-
-    @classmethod
-    def top_publisher(cls):
-        """Magazine with most articles."""
-        if not Article.all:
-            return None
-        return max(cls.all, key=lambda mag: len(mag.articles()))
+    def __repr__(self):
+        return f"<Article '{self.title}' by {self.author.name}>"
